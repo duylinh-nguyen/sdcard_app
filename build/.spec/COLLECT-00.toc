@@ -1,0 +1,21 @@
+([('.exe',
+   'C:\\Users\\NGUYEN DUY LINH\\Desktop\\SD_READER\\build\\.spec\\.exe',
+   'EXECUTABLE'),
+  ('.exe.manifest',
+   'C:\\Users\\NGUYEN DUY '
+   'LINH\\Desktop\\SD_READER\\build\\.spec\\.spec.exe.manifest',
+   'BINARY'),
+  ('VCRUNTIME140.dll', 'c:\\python\\python36\\VCRUNTIME140.dll', 'BINARY'),
+  ('python36.dll', 'c:\\python\\python36\\python36.dll', 'BINARY'),
+  ('select', 'c:\\python\\python36\\DLLs\\select.pyd', 'EXTENSION'),
+  ('unicodedata', 'c:\\python\\python36\\DLLs\\unicodedata.pyd', 'EXTENSION'),
+  ('_bz2', 'c:\\python\\python36\\DLLs\\_bz2.pyd', 'EXTENSION'),
+  ('_socket', 'c:\\python\\python36\\DLLs\\_socket.pyd', 'EXTENSION'),
+  ('_lzma', 'c:\\python\\python36\\DLLs\\_lzma.pyd', 'EXTENSION'),
+  ('_hashlib', 'c:\\python\\python36\\DLLs\\_hashlib.pyd', 'EXTENSION'),
+  ('_ssl', 'c:\\python\\python36\\DLLs\\_ssl.pyd', 'EXTENSION'),
+  ('pyexpat', 'c:\\python\\python36\\DLLs\\pyexpat.pyd', 'EXTENSION'),
+  ('base_library.zip',
+   'C:\\Users\\NGUYEN DUY '
+   'LINH\\Desktop\\SD_READER\\build\\.spec\\base_library.zip',
+   'DATA')],)
