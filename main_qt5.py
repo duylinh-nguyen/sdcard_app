@@ -16,6 +16,7 @@ import time
 import threading
 import queue
 import sys
+import glob
 
 
 conn_status = "Chưa kết nối"
@@ -183,7 +184,6 @@ class Ui_MainWindow(object):
         font = QtGui.QFont()
         font.setFamily("Roboto")
         font.setPointSize(12)
-        self.tab2_text2.setMinimum(2)
         self.tab2_text2.setFont(font)
         self.tab2_text2.setMaximum(999)
         self.tab2_text2.setObjectName("tab2_text2")
@@ -192,6 +192,8 @@ class Ui_MainWindow(object):
         self.tab2_text1.setMaxLength(10)
         font = QtGui.QFont()
         font.setPointSize(12)
+        self.tab2_text2.setValue(512)
+        self.tab2_text2.setEnabled(False)
         self.tab2_text1.setFont(font)
         self.tab2_text1.setText("0x00000000")
         self.tab2_text1.setObjectName("tab2_text1")
@@ -496,7 +498,7 @@ class Ui_MainWindow(object):
             return -1
 
     def resize_text3(self):
-        # self.tab2_text3.setMaximumSize(self.tab2_text2.value())
+        # self.tab2_text3.setMaximumSize(self.tab2_text2.value 
         # self.statusbar.showMessage("Độ dài tối đa nội dung sẽ là "+self.tab2_text2.value()+" bytes")
         return 0
 
@@ -567,10 +569,10 @@ class SerialCOM(object):
     def read_byte(self, addr, ui_obj):
         try:
             # Serial send read byte command
-            cmd = '##rb'+addr
-            for i in range(512-(len(cmd)+2)):
+            cmd = ""
+            for i in range(512):
                 cmd += str(0x00)
-            cmd += "\r\n"
+            cmd = '##rb'+addr+cmd+"\r\n"
             print("Block len :", len(cmd))
             self.handler.write(cmd.encode())
             print("Start read byte...")
@@ -587,10 +589,10 @@ class SerialCOM(object):
     def write_byte(self, addr, content):
         try:
             #Serial send write byte command
-            cmd = '##wb'+addr+content
-            for i in range(512-(len(cmd)+2)):
+            cmd = content
+            for i in range(512-len(cmd)):
                 cmd += str(0x00)
-            cmd += "\r\n"
+            cmd ='##wb'+addr+cmd+ "\r\n"
             print("Block len :", len(cmd))
             print("--> Frame lenght: ", len(cmd))
             self.handler.write(cmd.encode())
@@ -604,10 +606,10 @@ class SerialCOM(object):
     def write_block(self, addr, content, data_len):
         try:
             #Serial send write byte command
-            cmd = '##wl'+addr+content
-            for i in range(512-(len(cmd)+2)):
+            cmd = content
+            for i in range(512-(len(cmd))):
                 cmd += str(0x00)
-            cmd += "\r\n"
+            cmd = '##wl'+addr+cmd+"\r\n"
             print("Block len :", len(cmd))
             self.handler.write(cmd.encode())
             print("Ghi thành công")
@@ -619,11 +621,12 @@ class SerialCOM(object):
     
     def write_file(self, path, content):
         try:
-            cmd = '##wf'+path+chr(25)+content
-            for i in range(512-(len(cmd)+2)):
+            cmd = chr(25)+content
+            for i in range(512-(len(cmd))):
                 cmd+= str(0x00)
-            cmd += "\r\n"
-            print("Block len :", len(cmd))
+            cmd = '##wf'+path+cmd+"\r\n"
+            print("--> Length: ", len(cmd))
+            print("--> Content: ", cmd)
             self.handler.write(cmd.encode())
             print("Ghi file thành công")
             return True
@@ -635,11 +638,12 @@ class SerialCOM(object):
     def read_block(self, addr, data_len, ui_obj):
         try:
             # Serial send read byte command
-            cmd = '##rl'+addr+str(data_len)
-            for i in range(512-(len(cmd)+2)):
+            cmd = ""
+            for i in range(512):
                 cmd += str(0x00)
-            cmd += "\r\n"
-            print(len(cmd))
+            cmd = '##rl'+addr+cmd+"\r\n"
+            print("--> Length: ", len(cmd))
+            print("--> Content: ", cmd)
             self.handler.write(cmd.encode())
             print("Start read block...")
             self.serialThread = serialThread(self.handler, 1)
@@ -655,11 +659,12 @@ class SerialCOM(object):
     def read_file(self, path, ui_obj):
         try:
             # Serial send read byte command
-            cmd = '##rf'+path
-            for i in range(512-(len(cmd)+2)):
+            cmd = path
+            for i in range(512-(len(cmd))):
                 cmd += str(0x00)
-            cmd += "\r\n"
-            print(len(cmd))
+            cmd = '##rf'+cmd+"\r\n"
+            print("--> Length: ", len(cmd))
+            print("--> Content: ", cmd)
             self.handler.write(cmd.encode())
             print("Start read file...")
             self.serialThread = serialThread(self.handler, 2)
