@@ -11,6 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog,QMessageBox, QMainWindow, QDialog
 from PyQt5.QtCore import pyqtSignal, QObject, QThread
 import serial
+from serial import Serial
 import serial.tools.list_ports
 import time
 import threading
@@ -371,7 +372,7 @@ class Ui_MainWindow(object):
 
             #TODO: Send write command to serial
             # self.com_handler.handler.write("Hello world".encode())
-            self.com_handler.write_byte(byte_addr[2:], byte_content)
+            self.com_handler.write_byte(byte_addr[2:], byte_content, self)
             try:
                 status = "Gửi ký tự '" +str(byte_content)+"' tới địa chỉ "+ byte_addr
                 self.statusbar.showMessage(status)
@@ -386,24 +387,22 @@ class Ui_MainWindow(object):
                 return -1
             # block_size = self.tab2_text2.value()
             block_content = self.tab2_text3.toPlainText()
-            stt = self.com_handler.write_block(block_addr[2:], block_content, block_len)
+            stt = self.com_handler.write_block(block_addr[2:], block_content, block_len, self)
             if stt:
-                self.statusbar.showMessage("Ghi block thành công")
+                self.statusbar.showMessage("Gửi lệnh thành công")
             else:
-                self.statusbar.showMessage("Ghi block thất bại")
+                self.statusbar.showMessage("Gửi lệnh  thất bại")
 
         if (current_tab == 2):
             file_addr = self.tab3_text1.text()
             file_content = self.tab3_text2.toPlainText()
 
-            stt = self.com_handler.write_file(file_addr, file_content)
+            stt = self.com_handler.write_file(file_addr, file_content, self)
 
             if stt:
-                self.statusbar.showMessage("Ghi file thành công")
+                self.statusbar.showMessage("Gửi lệnh thành công")
             else:
-                self.statusbar.showMessage("Ghi file thất bại")
-
-            
+                self.statusbar.showMessage("Gửi lệnh thất bại")
 
 
     def read_callback(self):
@@ -514,6 +513,10 @@ class Ui_MainWindow(object):
         elif (readtype==2):
             self.tab3_text2.setPlainText(str(buff))
 
+    def raise_write_status(self):
+        self.com_handler.serialThread.quit()
+        self.statusbar.showMessage("Ghi thành công")
+
     def exit(self):
         sys.exit()
 
@@ -576,7 +579,7 @@ class SerialCOM(object):
             print("Block len :", len(cmd))
             self.handler.write(cmd.encode())
             print("Start read byte...")
-            self.serialThread = serialThread(self.handler, 0)
+            self.serialThread = serialReadThread(self.handler, 0)
             self.serialThread.trigger.connect(ui_obj.updateContent)
             self.serialThread.start()
             return True
@@ -586,7 +589,7 @@ class SerialCOM(object):
             pass
         return 0
     
-    def write_byte(self, addr, content):
+    def write_byte(self, addr, content, ui_obj):
         try:
             #Serial send write byte command
             cmd = content
@@ -596,14 +599,16 @@ class SerialCOM(object):
             print("Block len :", len(cmd))
             print("--> Frame lenght: ", len(cmd))
             self.handler.write(cmd.encode())
-            print("Ghi thành công")
+            self.serialThread = serialWriteThread(self.handler)
+            self.serialThread.trigger.connect(ui_obj.raise_write_status)
+            self.serialThread.start()
             return True
         except:
             print("Lỗi write byte")
             return False
             pass
 
-    def write_block(self, addr, content, data_len):
+    def write_block(self, addr, content, data_len, ui_obj):
         try:
             #Serial send write byte command
             cmd = content
@@ -612,14 +617,16 @@ class SerialCOM(object):
             cmd = '##wl'+addr+cmd+"\r\n"
             print("Block len :", len(cmd))
             self.handler.write(cmd.encode())
-            print("Ghi thành công")
+            self.serialThread = serialWriteThread(self.handler)
+            self.serialThread.trigger.connect(ui_obj.raise_write_status)
+            self.serialThread.start()
             return True
         except Exception as e:
             print("Lỗi write block:", str(e))
             return False
             pass
     
-    def write_file(self, path, content):
+    def write_file(self, path, content, ui_obj):
         try:
             cmd = chr(25)+content
             for i in range(512-(len(cmd))):
@@ -628,7 +635,9 @@ class SerialCOM(object):
             print("--> Length: ", len(cmd))
             print("--> Content: ", cmd)
             self.handler.write(cmd.encode())
-            print("Ghi file thành công")
+            self.serialThread = serialWriteThread(self.handler)
+            self.serialThread.trigger.connect(ui_obj.raise_write_status)
+            self.serialThread.start()
             return True
         except Exception as e:
             print("Lỗi write file:", str(e))
@@ -646,7 +655,7 @@ class SerialCOM(object):
             print("--> Content: ", cmd)
             self.handler.write(cmd.encode())
             print("Start read block...")
-            self.serialThread = serialThread(self.handler, 1)
+            self.serialThread = serialReadThread(self.handler, 1)
             self.serialThread.trigger.connect(ui_obj.updateContent)
             self.serialThread.start()
             return True
@@ -667,7 +676,7 @@ class SerialCOM(object):
             print("--> Content: ", cmd)
             self.handler.write(cmd.encode())
             print("Start read file...")
-            self.serialThread = serialThread(self.handler, 2)
+            self.serialThread = serialReadThread(self.handler, 2)
             self.serialThread.trigger.connect(ui_obj.updateContent)
             self.serialThread.start()
             return True
@@ -725,7 +734,7 @@ def serial_read(serial_obj, ui_obj, readtype):
 
     return data_buffer
 
-class serialThread(QThread):
+class serialReadThread(QThread):
     trigger = pyqtSignal(str, int, object)
     thread_exit = False
     def __init__(self, serial_obj=None, readtype = 0):
@@ -742,6 +751,7 @@ class serialThread(QThread):
             for line in self.serial_obj.read():
                 try:
                     line = chr(line)
+                    print(line.encode())
                     aux_buff = aux_buff + line 
                     if (is_start):
                         buff = buff + line 
@@ -750,7 +760,7 @@ class serialThread(QThread):
                         aux_buff = ""
                         is_start= True
                     if ("##rl" == aux_buff[len(aux_buff)-4:]) and (self.readtype == 1):
-                        # print("start frame")
+                        # print("start Sframe")
                         aux_buff = ""
                         is_start= True
                     if ("##rf" == aux_buff[len(aux_buff)-4:]) and (self.readtype == 2):
@@ -772,6 +782,35 @@ class serialThread(QThread):
                 # print("Encode:", aux_buff[len(aux_buff)-1:].encode())
                 self.serial_obj.write(line.encode())
                 
+ 
+class serialWriteThread(QThread):
+    trigger = pyqtSignal()
+    thread_exit = False
+    def __init__(self, serial_obj=None):
+        QThread.__init__(self)
+        self.serial_obj = serial_obj
+
+    def run(self):
+        # global dataframe_q
+        aux_buff = ""
+        while (not self.thread_exit):
+            for line in self.serial_obj.read():
+                try:
+                    line = chr(line)
+                    print(line.encode())
+                    #### Sửa end frame thành \r\n
+                    if (aux_buff[len(aux_buff)-4:].encode() == b'ET##'):
+                        print("Write successful, thread stopped")
+                        self.trigger.emit()
+                        self.serial_obj.flush()
+                        print('Exittting...')
+                        self.thread_exit = True
+                        return 
+                except (Exception) as e:
+                    print("Serial wait for response err: ", str(e))
+                # print("Encode:", aux_buff[len(aux_buff)-1:].encode())
+                self.serial_obj.write(line.encode())
+
 
 def main():
     global dir_stack, conn_status, dataframe_q
